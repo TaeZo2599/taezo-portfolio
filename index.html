@@ -820,11 +820,33 @@
     }
 
     .video-frame video {
+      position: relative;
+      z-index: 1;
       width: 100%;
       height: 100%;
       min-height: 360px;
       object-fit: contain;
       background: var(--pink-soft);
+    }
+
+    .video-fallback-note {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      padding: 28px;
+      background: linear-gradient(135deg, rgba(246, 214, 230, .34), rgba(251, 242, 223, .78));
+      color: rgba(21, 21, 21, .58);
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .video-frame.has-video-error video {
+      display: none;
     }
 
     .motion-copy {
@@ -1417,10 +1439,11 @@
             <div class="motion-showcase">
               <div class="video-frame">
                 <span class="video-badge">Motion Reel</span>
-                <video controls muted playsinline preload="auto" aria-label="TaeZo motion portfolio video">
+                <video class="motion-video" controls autoplay loop muted playsinline preload="auto" data-motion-preview aria-label="TaeZo motion portfolio video">
                   <source src="assets/taezo-motion.mp4" type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
+                <p class="video-fallback-note">Loading TaeZo motion preview...</p>
               </div>
               <div class="motion-copy">
                 <span class="category-kicker">Featured Motion Piece</span>
@@ -1570,6 +1593,28 @@
         event.preventDefault();
         target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       });
+    });
+
+    document.querySelectorAll("[data-motion-preview]").forEach((video) => {
+      const frame = video.closest(".video-frame");
+      const startPreview = () => {
+        if (Number.isFinite(video.duration) && video.duration > 0 && video.currentTime < 0.12) {
+          try {
+            video.currentTime = Math.min(0.18, video.duration / 3);
+          } catch (error) {
+            /* Some browsers block seeking until metadata is ready. */
+          }
+        }
+
+        video.play().catch(() => {
+          frame?.classList.add("needs-manual-play");
+        });
+      };
+
+      video.addEventListener("loadeddata", startPreview, { once: true });
+      video.addEventListener("canplay", startPreview, { once: true });
+      video.addEventListener("error", () => frame?.classList.add("has-video-error"), { once: true });
+      requestAnimationFrame(startPreview);
     });
 
     const shotTarget = new URLSearchParams(window.location.search).get("shot");
